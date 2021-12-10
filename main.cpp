@@ -1,5 +1,9 @@
 #include<includes/game.hpp>
+#include<includes/MCTree.hpp>
+#include<includes/Logger.hpp>
 #include<iostream>
+#include<thread>
+#include<vector>
 using namespace std;
 void printStateHelper(ostream& output, const Game::Settings& setting, const Game::State& state){
     output << "========================================";
@@ -20,20 +24,38 @@ void printStateHelper(ostream& output, const Game::Settings& setting, const Game
     }
 }
 int main(){
-    Game game({3, 10, 3});
+    static constexpr size_t mc_workers = 2;
+    static constexpr auto allow_time = 5s;
+    Logger::setLogLevel(Logger::LogLevel::Warning);
+    Game game({2, 6, 4});
+    MCTree mct{Game::State::Dominator::Player2, game};
+    vector<thread> worker_threads;
+    for(size_t i = 0; i < mc_workers; ++i){
+        worker_threads.emplace_back(thread{[&mct, &game](){
+            while(true) MCTree::step(&mct, game);
+        }});
+    }
     Game::State state{game.initializeState()};
-    Game::Action action{Game::Action::Operator::Player1, vector<size_t>(game.setting_.dimension_count_, 0)};
+    Game::Action action{vector<size_t>(game.setting_.dimension_count_, 0)};
     size_t helper;
-    while(state.winner_ == Game::State::Dominator::None){
-        action.actor_ = fromDominator(state.next_);
-        cout << state.next_ << "> ";
-        for(size_t i = 0; i < game.setting_.dimension_count_; ){
-            cin >> helper;
-            if(helper < game.setting_.dimension_size_){
-                action.target_.at(i++) = helper;
+    while(!state.ended()){
+        cout << state.next_ << '>';
+        if(state.next_ == Game::State::Dominator::Player2){
+            this_thread::sleep_for(allow_time);
+            action = mct.predict(game);
+            for(const auto& index: action.target_) cout << ' ' << index;
+            cout << '\n';
+        }else{
+            cout << ' ';
+            for(size_t i = 0; i < game.setting_.dimension_count_; ){
+                cin >> helper;
+                if(helper < game.setting_.dimension_size_){
+                    action.target_.at(i++) = helper;
+                }
             }
         }
         state = game.step(state, action);
+        mct.move(game.setting_.getFlattenIndex(action.target_), game);
         printStateHelper(cout, game.setting_, state);
     }
     return 0;

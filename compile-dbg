@@ -1,0 +1,2 @@
+#!/bin/bash
+find -name '*.cpp' | xargs g++ -Wall -Wextra -fanalyzer -Og -g -std=c++20 -I. -lpthread -o game

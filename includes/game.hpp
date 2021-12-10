@@ -5,22 +5,19 @@ class Game{
   public:
     struct State{
         enum class Dominator: unsigned short{
-            None,
-            Player1,
+            Player1 = 0,
             Player2,
+            None
         };
         Dominator winner_;
         Dominator next_;
+        std::size_t occupied_;
         std::vector<Dominator> flatten_board_;
         State(std::size_t total_locations);
+        bool ended()const;
+        Dominator nextPlayer()const;
     };
     struct Action{
-        enum class Operator: unsigned short{
-            Player1 = 0,
-            Player2,
-            PlayerLimit
-        };
-        Operator actor_;
         std::vector<size_t> target_;
     };
     struct Settings{
@@ -36,9 +33,10 @@ class Game{
     const Settings setting_;
     Game(Settings setting);
     State initializeState()const;
+    std::size_t encodeAction(const Action& action)const;
+    Action decodeAction(std::size_t encode)const;
+    Action diffAction(const State& from, const State& to)const;
+    std::vector<std::size_t> getPossibleActionEncodes(const State& state)const;
     State step(const State& current_state, const Action& current_action)const;
 };
 std::ostream& operator<<(std::ostream& lhs, const Game::State::Dominator& rhs);
-Game::State::Dominator fromOperator(const Game::Action::Operator& source);
-Game::Action::Operator fromDominator(const Game::State::Dominator& source);
-Game::Action::Operator nextPlayer(const Game::Action::Operator& source);

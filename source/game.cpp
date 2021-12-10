@@ -1,9 +1,17 @@
 #include<includes/BitVector.hpp>
 #include<includes/game.hpp>
+#include<includes/Logger.hpp>
 #include<iterator>
 Game::State::State(
     std::size_t total_locations
-): winner_(Dominator::None), next_(Dominator::Player1), flatten_board_(total_locations, Dominator::None){}
+): winner_(Dominator::None), next_(Dominator::Player1), occupied_(0), flatten_board_(total_locations, Dominator::None){}
+bool Game::State::ended()const{
+    return (this->winner_ != Dominator::None) || (this->next_ == Dominator::None);
+}
+Game::State::Dominator Game::State::nextPlayer()const{
+    static constexpr auto limit_player = static_cast<unsigned short>(Dominator::None);
+    return static_cast<Dominator>((static_cast<unsigned short>(this->next_) + 1) % limit_player);
+}
 Game::Settings::Settings(
     unsigned short dimension_count, std::size_t dimension_size, std::size_t chain_to_win
 ): dimension_count_(dimension_count), dimension_size_(dimension_size), chain_to_win_(chain_to_win){
@@ -33,6 +41,27 @@ std::vector<std::size_t> Game::Settings::getStructuredIndex(std::size_t flatten_
 Game::Game(Settings setting): setting_(setting){}
 Game::State Game::initializeState()const{
     return State(this->setting_.total_locations_);
+}
+std::size_t Game::encodeAction(const Game::Action& action)const{
+    return this->setting_.getFlattenIndex(action.target_);
+}
+Game::Action Game::decodeAction(std::size_t encode)const{
+    return Action{this->setting_.getStructuredIndex(encode)};
+}
+Game::Action Game::diffAction(const Game::State& from, const Game::State& to)const{
+    for(size_t i = 0; i < from.flatten_board_.size(); ++i) if(from.flatten_board_.at(i) != to.flatten_board_.at(i)){
+        return this->decodeAction(i);
+    }
+    return this->decodeAction(0);
+}
+std::vector<std::size_t> Game::getPossibleActionEncodes(const State& state)const{
+    std::vector<std::size_t> result;
+    if(state.winner_ != State::Dominator::None) return result;
+    for(std::size_t i = 0; i < state.flatten_board_.size(); ++i) if(state.flatten_board_.at(i) == State::Dominator::None){
+        result.emplace_back(i);
+    }
+    Logger::debug() << Logger::threadId() + "total " + std::to_string(result.size()) + " actions collected\n";
+    return result;
 }
 Game::State Game::step(const State& current_state, const Action& current_action)const{
     static auto indexModifier = [](
@@ -67,29 +96,33 @@ Game::State Game::step(const State& current_state, const Action& current_action)
         }
     };
     if(current_state.winner_ != State::Dominator::None) return current_state;
-    State::Dominator current_dominator{fromOperator(current_action.actor_)};
-    if(current_state.next_ != current_dominator) return current_state;
     std::size_t target_offset{this->setting_.getFlattenIndex(current_action.target_)};
+    Logger::debug() << Logger::threadId() + "current action encodes as " + std::to_string(this->encodeAction(current_action)) + ", target offset = " + std::to_string(target_offset) + '\n';
     if(current_state.flatten_board_.at(target_offset) != State::Dominator::None) return current_state;
     State result{current_state};
-    result.flatten_board_.at(target_offset) = current_dominator;
+    result.flatten_board_.at(target_offset) = current_state.next_;
+    ++result.occupied_;
     BitVector iteration_helper{this->setting_.dimension_count_};
     iteration_helper.next();
     bool finished = false;
     do{
         std::size_t total_count = 1;
-        scanSide(total_count, true, current_action.target_, iteration_helper, result, current_dominator);
-        scanSide(total_count, false, current_action.target_, iteration_helper, result, current_dominator);
+        scanSide(total_count, true, current_action.target_, iteration_helper, result, current_state.next_);
+        scanSide(total_count, false, current_action.target_, iteration_helper, result, current_state.next_);
         if(total_count >= this->setting_.chain_to_win_){
             finished = true;
             break;
         }
     }while(iteration_helper.next());
     if(finished){
-        result.winner_ = current_dominator;
+        result.winner_ = current_state.next_;
         result.next_ = State::Dominator::None;
     }else{
-        result.next_ = fromOperator(nextPlayer(current_action.actor_));
+        if(result.occupied_ < this->setting_.total_locations_){
+            result.next_ = current_state.nextPlayer();
+        }else{
+            result.next_ = State::Dominator::None;
+        }
     }
     return result;
 }
@@ -105,29 +138,4 @@ std::ostream& operator<<(std::ostream& lhs, const Game::State::Dominator& rhs){
             break;
     }
     return lhs;
-}
-Game::State::Dominator fromOperator(const Game::Action::Operator& source){
-    switch(source){
-        case Game::Action::Operator::Player1:
-            return Game::State::Dominator::Player1;
-        case Game::Action::Operator::Player2:
-            return Game::State::Dominator::Player2;
-        default:
-            return Game::State::Dominator::Player1;
-    }
-}
-Game::Action::Operator fromDominator(const Game::State::Dominator& source){
-    switch(source){
-        case Game::State::Dominator::Player1:
-            return Game::Action::Operator::Player1;
-        case Game::State::Dominator::Player2:
-            return Game::Action::Operator::Player2;
-        default:
-            return Game::Action::Operator::Player1;
-    }
-}
-Game::Action::Operator nextPlayer(const Game::Action::Operator& source){
-    static auto limit_player{static_cast<unsigned short>(Game::Action::Operator::PlayerLimit)};
-    auto current_player{static_cast<unsigned short>(source)};
-    return static_cast<Game::Action::Operator>((current_player + 1) % limit_player);
 }
