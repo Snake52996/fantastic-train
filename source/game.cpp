@@ -60,7 +60,6 @@ std::vector<std::size_t> Game::getPossibleActionEncodes(const State& state)const
     for(std::size_t i = 0; i < state.flatten_board_.size(); ++i) if(state.flatten_board_.at(i) == State::Dominator::None){
         result.emplace_back(i);
     }
-    Logger::debug() << Logger::threadId() + "total " + std::to_string(result.size()) + " actions collected\n";
     return result;
 }
 Game::State Game::step(const State& current_state, const Action& current_action)const{
@@ -97,7 +96,6 @@ Game::State Game::step(const State& current_state, const Action& current_action)
     };
     if(current_state.winner_ != State::Dominator::None) return current_state;
     std::size_t target_offset{this->setting_.getFlattenIndex(current_action.target_)};
-    Logger::debug() << Logger::threadId() + "current action encodes as " + std::to_string(this->encodeAction(current_action)) + ", target offset = " + std::to_string(target_offset) + '\n';
     if(current_state.flatten_board_.at(target_offset) != State::Dominator::None) return current_state;
     State result{current_state};
     result.flatten_board_.at(target_offset) = current_state.next_;

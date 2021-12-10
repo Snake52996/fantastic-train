@@ -4,6 +4,7 @@
 #include<iostream>
 #include<thread>
 #include<vector>
+#include<atomic>
 using namespace std;
 void printStateHelper(ostream& output, const Game::Settings& setting, const Game::State& state){
     output << "========================================";
@@ -19,28 +20,55 @@ void printStateHelper(ostream& output, const Game::Settings& setting, const Game
         output << ')';
     }
     output << "\n========================================\n";
-    if(state.winner_ != Game::State::Dominator::None){
-        output << state.winner_ << " wins";
+    if(state.ended()){
+        if(state.winner_ != Game::State::Dominator::None){
+            output << state.winner_ << " wins\n";
+        }else{
+            output << "draw!\n";
+        }
     }
+    
+}
+template <class Rep, std::intmax_t num, std::intmax_t denom>
+string formatChrono(std::chrono::duration<Rep, std::ratio<num, denom>> d){
+    const auto hrs = chrono::duration_cast<chrono::hours>(d);
+    const auto mins = chrono::duration_cast<chrono::minutes>(d - hrs);
+    const auto secs = chrono::duration_cast<chrono::seconds>(d - hrs - mins);
+    const auto ms = chrono::duration_cast<chrono::milliseconds>(d - hrs - secs);
+    return to_string(hrs.count()) + 'h' + to_string(mins.count()) + 'm' + to_string(secs.count()) + 's' + to_string(ms.count()) + "ms";
+    //return std::make_tuple(hrs, mins, secs, ms);
 }
 int main(){
-    static constexpr size_t mc_workers = 2;
-    static constexpr auto allow_time = 5s;
-    Logger::setLogLevel(Logger::LogLevel::Warning);
-    Game game({2, 6, 4});
-    MCTree mct{Game::State::Dominator::Player2, game};
+    static constexpr size_t mc_workers = 8;
+    static constexpr auto allow_time = 2s;
+    Logger::setLogLevel(Logger::LogLevel::Info);
+    Game game({3, 8, 5});
+    Logger::info("launching...\n");
+    Logger::info(mc_workers, " workers will be recruited\n");
+    Logger::info("the AI player is allowed ", formatChrono(allow_time), " to plan each step\n");
+    Logger::info("the board sizes ", game.setting_.dimension_size_, '^', game.setting_.dimension_count_, '\n');
+    Logger::info("chain ", game.setting_.chain_to_win_, " locations to win the game\n");
+    cout << "Select a side: 1 or odd for offensive, 2 or even for defensive: ";
+    size_t helper;
+    cin >> helper;
+    auto ai_side{helper & 1 ? Game::State::Dominator::Player2 : Game::State::Dominator::Player1};
+    MCTree mct{ai_side, game};
+    Logger::info("recruiting workers\n");
     vector<thread> worker_threads;
+    vector<bool> keep_worker;
     for(size_t i = 0; i < mc_workers; ++i){
-        worker_threads.emplace_back(thread{[&mct, &game](){
-            while(true) MCTree::step(&mct, game);
+        keep_worker.emplace_back(true);
+        auto keep = keep_worker.back();
+        worker_threads.emplace_back(thread{[&mct, &game, keep](){
+            while(keep) MCTree::step(&mct, game);
         }});
     }
+    Logger::info("workers in their place\n");
     Game::State state{game.initializeState()};
     Game::Action action{vector<size_t>(game.setting_.dimension_count_, 0)};
-    size_t helper;
     while(!state.ended()){
         cout << state.next_ << '>';
-        if(state.next_ == Game::State::Dominator::Player2){
+        if(state.next_ == ai_side){
             this_thread::sleep_for(allow_time);
             action = mct.predict(game);
             for(const auto& index: action.target_) cout << ' ' << index;
@@ -58,5 +86,10 @@ int main(){
         mct.move(game.setting_.getFlattenIndex(action.target_), game);
         printStateHelper(cout, game.setting_, state);
     }
+    Logger::info("ready to exit, sending signals to terminate workers...\n");
+    for(auto terminator: keep_worker) terminator = false;
+    Logger::info("signals sent, waiting for workers to leave...\n");
+    for(auto& worker: worker_threads) worker.join();
+    Logger::info("all workers left, exiting\n");
     return 0;
 }

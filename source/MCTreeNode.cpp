@@ -1,4 +1,5 @@
 #include<includes/MCTreeNode.hpp>
+#include<includes/Logger.hpp>
 #include<cmath>
 #include<random>
 #include<algorithm>
@@ -55,6 +56,7 @@ MCTreeNode* MCTreeNode::expend(const std::vector<std::size_t>& possible_actions,
     std::mt19937_64 engine(rd());
     std::uniform_int_distribution<std::size_t> distribute(0, selectable_actions.size() - 1);
     std::size_t target{selectable_actions.at(distribute(engine))};
+    std::scoped_lock lock(this->children_mutex_);
     auto [iter, succeed]{this->children_.emplace(target, game.step(this->state_, game.decodeAction(target)))};
     if(succeed) return &iter->second;
     else return nullptr;

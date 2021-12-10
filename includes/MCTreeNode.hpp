@@ -1,9 +1,9 @@
 _Pragma("once");
 #include<includes/game.hpp>
 #include<map>
-#include<forward_list>
 #include<atomic>
 #include<vector>
+#include<mutex>
 class MCTreeNode{
   private:
     bool finalized_;
@@ -12,6 +12,7 @@ class MCTreeNode{
   public:
     Game::State state_;
     std::map<std::size_t, MCTreeNode> children_;
+    std::mutex children_mutex_;
     MCTreeNode(const Game::State& state);
     ~MCTreeNode() = default;
     void finalize();
