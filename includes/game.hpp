@@ -21,6 +21,7 @@ class Game{
         std::vector<size_t> target_;
     };
     struct Settings{
+        constexpr static std::size_t player_count_ = static_cast<std::size_t>(Game::State::Dominator::None);
         unsigned short dimension_count_;
         std::size_t dimension_size_;
         std::size_t chain_to_win_;
