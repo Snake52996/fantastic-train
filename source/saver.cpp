@@ -107,9 +107,9 @@ void Saver::saveChangeRoot(MCTreeNode* from, MCTreeNode* to){
         while(iter != from->children_.end()){
             if((&iter->second != to) && (iter->second.workers_within_ == 0)){
                 this->saveAll(&iter->second);
+                Logger::trace("erase ", &iter->second, '\n');
+                from->children_.erase(iter++);
             }
-            Logger::trace("erase ", &iter->second, '\n');
-            from->children_.erase(iter++);
         }
         std::this_thread::sleep_for(20ms);
     }

@@ -9,6 +9,10 @@ MCTreeNode::MCTreeNode(
 ): total_simulation_(0), encoded_action_(encoded_action), guide_direction_(nullptr), workers_within_(0){
     for(std::size_t i = 0; i < player_number + 1; ++i) this->succeed_simulation_.emplace_back(new std::atomic_size_t(0));
     Logger::debug("C: succeed_simulation_ @", this , " have size ", this->succeed_simulation_.size(), '\n');
+    Logger::debug("C: make access test to unique pointer wrapped atomic values: \n");
+    for(std::size_t i = 0; i < player_number + 1; ++i){
+        Logger::debug("  ", *this->succeed_simulation_.at(i), '\n');
+    }
 }
 std::size_t MCTreeNode::totalVisit()const{
     return this->total_simulation_;

@@ -127,17 +127,18 @@ void MCTree::move(std::size_t action, const Game& game){
     // save current root before move
     auto from{this->current_root_};
     // lookup for child with the required action
-    const auto& item{this->current_root_->children_.find(action)};
+    const auto item{this->current_root_->children_.find(action)};
     if(item == this->current_root_->children_.end()){
         // no luck: that child does not exist!
         // we must create one for it
         std::scoped_lock lock(this->current_root_->children_mutex_);
         auto [iter, success]{this->current_root_->children_.try_emplace(action, game.setting_.player_count_, action)};
-        this->current_root_ = &iter->second;
+        this->current_root_ = &(iter->second);
     }else{
         // got it
-        this->current_root_ = &item->second;
+        this->current_root_ = &(item->second);
     }
+    Logger::info("move from ", from, " to ", this->current_root_, '\n');
     // update the guide direction so that all up comming searches will find the right way
     from->guide_direction_ = this->current_root_;
     // send a message to saver to save nodes that will no longer be used in the current run

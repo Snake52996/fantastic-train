@@ -43,7 +43,7 @@ string formatChrono(std::chrono::duration<Rep, std::ratio<num, denom>> d){
 int main(){
     static constexpr size_t mc_workers = 2;
     static constexpr auto allow_time = 2s;
-    Logger::setLogLevel(Logger::LogLevel::All);
+    Logger::setLogLevel(Logger::LogLevel::Info);
     Game game({3, 8, 5});
     SimpleMessageQueue<SaveCommand> command_queue;
     Saver saver{command_queue};
