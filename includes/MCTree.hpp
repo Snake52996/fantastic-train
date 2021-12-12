@@ -14,11 +14,14 @@ class MCTree{
     SimpleMessageQueue<SaveCommand>& command_queue_;
     std::pair<bool, std::size_t> __step(MCTreeNode* target, const Game& game, Game::State& state, std::size_t player_id)const;
     Game::State traceCurrentState(const Game& game)const;
+    void __treeDump(const MCTreeNode* that)const;
   public:
     MCTree(const Game& game, SimpleMessageQueue<SaveCommand>& command_queue);
+    MCTree(MCTreeNode&& root, SimpleMessageQueue<SaveCommand>& command_queue);
     ~MCTree();
-    static void step(MCTree* that, const Game& game, std::size_t player_id);
+    static bool step(MCTree* that, const Game& game, std::size_t player_id);
     Game::Action predict(const Game& game, std::size_t player_id);
     void move(std::size_t action, const Game& game);
     void save();
+    void treeDump()const;
 };

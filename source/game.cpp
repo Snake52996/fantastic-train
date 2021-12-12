@@ -55,11 +55,17 @@ Game::Action Game::diffAction(const Game::State& from, const Game::State& to)con
     return this->decodeAction(0);
 }
 std::vector<std::size_t> Game::getPossibleActionEncodes(const State& state)const{
+    // Logger::debug("find possible actions for state:\n");
+    // for(std::size_t i = 0; i < 4; ++i){
+    //     Logger::debug(state.flatten_board_.at(i << 2), ' ', state.flatten_board_.at((i << 2) | 1), ' ', state.flatten_board_.at((i << 2) | 2), ' ', state.flatten_board_.at((i << 2) | 3), '\n');
+    // }
     std::vector<std::size_t> result;
-    if(state.winner_ != State::Dominator::None) return result;
+    if(state.ended()) return result;
     for(std::size_t i = 0; i < state.flatten_board_.size(); ++i) if(state.flatten_board_.at(i) == State::Dominator::None){
         result.emplace_back(i);
     }
+    // Logger::debug("result is\n");
+    // for(const auto item: result) Logger::debug(item, '\n');
     return result;
 }
 Game::State Game::step(const State& current_state, const Action& current_action)const{
@@ -126,6 +132,9 @@ Game::State Game::step(const State& current_state, const Action& current_action)
 }
 std::ostream& operator<<(std::ostream& lhs, const Game::State::Dominator& rhs){
     switch(rhs){
+        case Game::State::Dominator::None:
+            lhs << 'X';
+            break;
         case Game::State::Dominator::Player1:
             lhs << 'B';
             break;

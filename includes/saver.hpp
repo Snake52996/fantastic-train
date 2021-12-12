@@ -3,10 +3,12 @@ _Pragma("once");
 #include<includes/SimpleMessageQueue.hpp>
 #include<includes/SaveCommand.hpp>
 #include<fstream>
+#include<semaphore>
 class Saver{
   private:
     constexpr static std::size_t MagicNumber = 7097568816874001UL;
     SimpleMessageQueue<SaveCommand>& command_queue_;
+    std::counting_semaphore<>& allowed_nodes_;
     std::ofstream file_;
     void waitForWorkers(MCTreeNode* target)const;
     void saveOneUnlocked(MCTreeNode* target);
@@ -14,6 +16,6 @@ class Saver{
     void saveAll(MCTreeNode* target);
     void saveChangeRoot(MCTreeNode* from, MCTreeNode* to);
   public:
-    Saver(SimpleMessageQueue<SaveCommand>& command_queue);
+    Saver(SimpleMessageQueue<SaveCommand>& command_queue, std::counting_semaphore<>& allowed_nodes);
     void run();
 };
